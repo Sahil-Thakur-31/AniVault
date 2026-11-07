@@ -8,10 +8,10 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
+    "build": "npm run --workspaces --if-present build",
+    "test": "npx tsx --test tests/acceptance.test.ts tests/api.test.ts",
+    "dev:api": "npm --workspace=@anivault/api run dev",
+    "dev:web": "npm --workspace=@anivault/web run dev",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "devDependencies": {
@@ -22,3 +22,4 @@
     "node": ">=20.0.0"
   }
 }
+

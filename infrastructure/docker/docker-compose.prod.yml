@@ -88,3 +88,4 @@ volumes:
   pgdata:
   redisdata:
   web-static:
+

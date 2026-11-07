@@ -46,3 +46,4 @@ apps/desktop/src-tauri/target/
 # Database data mounts
 pgdata/
 redisdata/
+

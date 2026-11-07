@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@anivault/shared-types": ["packages/shared-types/src/index.ts"],
+      "@anivault/validation": ["packages/validation/src/index.ts"],
+      "@anivault/domain": ["packages/domain/src/index.ts"],
+      "@anivault/sync-engine": ["packages/sync-engine/src/index.ts"],
+      "@anivault/api-client": ["packages/api-client/src/index.ts"]
+    }
+  }
+}
+

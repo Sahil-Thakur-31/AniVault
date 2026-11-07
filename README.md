@@ -60,3 +60,4 @@ docker compose -f infrastructure/docker/docker-compose.prod.yml up -d postgres-d
 # 3. Read the SRS before initiating Phase 1 development
 cat docs/architecture/SRS_AND_TECHNICAL_ARCHITECTURE.md
 ```
+

@@ -1,0 +1,19 @@
+[package]
+name = "anivault-desktop"
+version = "1.0.0"
+description = "AniVault Unified Anime & Manga Desktop App"
+authors = ["AniVault Contributors"]
+edition = "2021"
+
+[lib]
+name = "anivault_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0.0", features = ["tray-icon"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+

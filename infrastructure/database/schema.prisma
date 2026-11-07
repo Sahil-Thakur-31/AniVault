@@ -1,0 +1,377 @@
+// infrastructure/database/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum MediaType {
+  ANIME
+  MANGA
+  LIGHT_NOVEL
+}
+
+enum MediaFormat {
+  TV
+  TV_SHORT
+  MOVIE
+  SPECIAL
+  OVA
+  ONA
+  MUSIC
+  MANGA
+  NOVEL
+  ONE_SHOT
+}
+
+enum AiringStatus {
+  FINISHED
+  RELEASING
+  NOT_YET_RELEASED
+  CANCELLED
+  HIATUS
+}
+
+enum RelationshipType {
+  SEQUEL
+  PREQUEL
+  ADAPTATION
+  SIDE_STORY
+  SPIN_OFF
+  ALTERNATE_VERSION
+  CONTAINS
+  RELATED
+}
+
+enum LibraryStatus {
+  PLANNING
+  WATCHING
+  READING
+  COMPLETED
+  ON_HOLD
+  DROPPED
+  REWATCHING
+  REREADING
+}
+
+enum RatingSystem {
+  POINT_10_DECIMAL
+  POINT_100
+  POINT_5_STAR
+  SMILEY_3
+}
+
+enum ExternalProvider {
+  ANILIST
+  MYANIMELIST
+  KITSU
+  ANIDB
+  TMDB
+  CUSTOM
+}
+
+enum SyncDirection {
+  TWO_WAY
+  PUSH_TO_PROVIDER
+  PULL_FROM_PROVIDER
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CONFLICT
+}
+
+model User {
+  id                String             @id @default(uuid()) @db.Uuid
+  email             String             @unique @db.VarChar(255)
+  username          String             @unique @db.VarChar(50)
+  passwordHash      String             @map("password_hash") @db.VarChar(255)
+  avatarUrl         String?            @map("avatar_url")
+  isActive          Boolean            @default(true) @map("is_active")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  preferences       UserPreferences?
+  library           UserLibrary[]
+  activities        UserActivity[]
+  connectedAccounts ConnectedAccount[]
+  syncJobs          SyncJob[]
+  importJobs        ImportJob[]
+  widgetConfigs     WidgetConfig[]
+
+  @@map("users")
+}
+
+model UserPreferences {
+  userId                   String       @id @map("user_id") @db.Uuid
+  preferredTheme           String       @default("midnight") @map("preferred_theme") @db.VarChar(30)
+  ratingSystem             RatingSystem @default(POINT_10_DECIMAL) @map("rating_system")
+  spoilerProtectionLevel   String       @default("STRICT") @map("spoiler_protection_level") @db.VarChar(20)
+  preferredTitleLanguage   String       @default("ROMAJI") @map("preferred_title_language") @db.VarChar(10)
+  enablePushNotifications  Boolean      @default(true) @map("enable_push_notifications")
+  autoSyncIntervalMinutes  Int          @default(60) @map("auto_sync_interval_minutes")
+  createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user                     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model Franchise {
+  id             String   @id @default(uuid()) @db.Uuid
+  canonicalTitle String   @map("canonical_title") @db.VarChar(255)
+  originalTitle  String?  @map("original_title") @db.VarChar(255)
+  description    String?
+  bannerUrl      String?  @map("banner_url")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  media          Media[]
+
+  @@map("franchises")
+}
+
+model Media {
+  id              String               @id @default(uuid()) @db.Uuid
+  franchiseId     String?              @map("franchise_id") @db.Uuid
+  type            MediaType
+  format          MediaFormat
+  titleRomaji     String               @map("title_romaji") @db.VarChar(255)
+  titleEnglish    String?              @map("title_english") @db.VarChar(255)
+  titleNative     String?              @map("title_native") @db.VarChar(255)
+  synopsis        String?
+  coverImageUrl   String?              @map("cover_image_url")
+  bannerImageUrl  String?              @map("banner_image_url")
+  status          AiringStatus         @default(NOT_YET_RELEASED)
+  startDate       DateTime?            @map("start_date") @db.Date
+  endDate         DateTime?            @map("end_date") @db.Date
+  totalEpisodes   Int?                 @map("total_episodes")
+  totalChapters   Int?                 @map("total_chapters")
+  totalVolumes    Int?                 @map("total_volumes")
+  durationMinutes Int?                 @map("duration_minutes")
+  genres          Json                 @default("[]")
+  studios         Json                 @default("[]")
+  isAdult         Boolean              @default(false) @map("is_adult")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  franchise       Franchise?           @relation(fields: [franchiseId], references: [id], onDelete: SetNull)
+  externalIds     MediaExternalId[]
+  sourceRelations MediaRelationship[]  @relation("SourceMedia")
+  targetRelations MediaRelationship[]  @relation("TargetMedia")
+  episodes        Episode[]
+  chapters        Chapter[]
+  userLibrary     UserLibrary[]
+
+  @@map("media")
+}
+
+model MediaRelationship {
+  id               String           @id @default(uuid()) @db.Uuid
+  sourceMediaId    String           @map("source_media_id") @db.Uuid
+  targetMediaId    String           @map("target_media_id") @db.Uuid
+  relationshipType RelationshipType @map("relationship_type")
+  isCanonical      Boolean          @default(true) @map("is_canonical")
+  notes            String?
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  sourceMedia      Media            @relation("SourceMedia", fields: [sourceMediaId], references: [id], onDelete: Cascade)
+  targetMedia      Media            @relation("TargetMedia", fields: [targetMediaId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceMediaId, targetMediaId, relationshipType])
+  @@map("media_relationships")
+}
+
+model MediaExternalId {
+  id             String           @id @default(uuid()) @db.Uuid
+  mediaId        String           @map("media_id") @db.Uuid
+  provider       ExternalProvider
+  externalId     String           @map("external_id") @db.VarChar(100)
+  externalUrl    String?          @map("external_url")
+  lastVerifiedAt DateTime         @default(now()) @map("last_verified_at") @db.Timestamptz
+  media          Media            @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId, provider])
+  @@unique([provider, externalId])
+  @@map("media_external_ids")
+}
+
+model Episode {
+  id             String    @id @default(uuid()) @db.Uuid
+  mediaId        String    @map("media_id") @db.Uuid
+  episodeNumber  Int       @map("episode_number")
+  absoluteNumber Int?      @map("absolute_number")
+  title          String?   @db.VarChar(255)
+  synopsis       String?
+  airDate        DateTime? @map("air_date") @db.Date
+  isFiller       Boolean   @default(false) @map("is_filler")
+  thumbnailUrl   String?   @map("thumbnail_url")
+  media          Media     @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId, episodeNumber])
+  @@map("episodes")
+}
+
+model Chapter {
+  id            String    @id @default(uuid()) @db.Uuid
+  mediaId       String    @map("media_id") @db.Uuid
+  chapterNumber Decimal   @map("chapter_number") @db.Decimal(6, 1)
+  volumeNumber  Int?      @map("volume_number")
+  title         String?   @db.VarChar(255)
+  releaseDate   DateTime? @map("release_date") @db.Date
+  media         Media     @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId, chapterNumber])
+  @@map("chapters")
+}
+
+model UserLibrary {
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String        @map("user_id") @db.Uuid
+  mediaId            String        @map("media_id") @db.Uuid
+  status             LibraryStatus
+  isFavorite         Boolean       @default(false) @map("is_favorite")
+  isPrivate          Boolean       @default(false) @map("is_private")
+  rewatchRereadCount Int           @default(0) @map("rewatch_reread_count")
+  startedAt          DateTime?     @map("started_at") @db.Date
+  completedAt        DateTime?     @map("completed_at") @db.Date
+  personalNotes      String?       @map("personal_notes")
+  customTags         Json          @default("[]") @map("custom_tags")
+  lastInteractedAt   DateTime      @default(now()) @map("last_interacted_at") @db.Timestamptz
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media              Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  progress           UserProgress?
+  rating             UserRating?
+
+  @@unique([userId, mediaId])
+  @@map("user_library")
+}
+
+model UserProgress {
+  id                 String      @id @default(uuid()) @db.Uuid
+  userLibraryId      String      @unique @map("user_library_id") @db.Uuid
+  currentEpisode     Int         @default(0) @map("current_episode")
+  currentChapter     Decimal     @default(0.0) @map("current_chapter") @db.Decimal(6, 1)
+  currentVolume      Int         @default(0) @map("current_volume")
+  progressPercentage Decimal     @default(0.00) @map("progress_percentage") @db.Decimal(5, 2)
+  isCompleted        Boolean     @default(false) @map("is_completed")
+  updatedAt          DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  userLibrary        UserLibrary @relation(fields: [userLibraryId], references: [id], onDelete: Cascade)
+
+  @@map("user_progress")
+}
+
+model UserRating {
+  id            String       @id @default(uuid()) @db.Uuid
+  userLibraryId String       @unique @map("user_library_id") @db.Uuid
+  score         Decimal      @default(0.00) @db.Decimal(4, 2)
+  ratingSystem  RatingSystem @default(POINT_10_DECIMAL) @map("rating_system")
+  reviewText    String?      @map("review_text")
+  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  userLibrary   UserLibrary  @relation(fields: [userLibraryId], references: [id], onDelete: Cascade)
+
+  @@map("user_ratings")
+}
+
+model UserActivity {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  mediaId      String   @map("media_id") @db.Uuid
+  eventType    String   @map("event_type") @db.VarChar(50)
+  fieldChanged String   @map("field_changed") @db.VarChar(50)
+  oldValue     String?  @map("old_value")
+  newValue     String?  @map("new_value")
+  sourceClient String   @map("source_client") @db.VarChar(30)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_activity")
+}
+
+model ConnectedAccount {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  provider         ExternalProvider
+  providerUserId   String           @map("provider_user_id") @db.VarChar(100)
+  providerUsername String           @map("provider_username") @db.VarChar(100)
+  accessTokenEnc   String           @map("access_token_enc")
+  refreshTokenEnc  String?          @map("refresh_token_enc")
+  tokenExpiresAt   DateTime?        @map("token_expires_at") @db.Timestamptz
+  syncDirection    SyncDirection    @default(TWO_WAY) @map("sync_direction")
+  isSyncEnabled    Boolean          @default(true) @map("is_sync_enabled")
+  lastSyncedAt     DateTime?        @map("last_synced_at") @db.Timestamptz
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncJobs         SyncJob[]
+
+  @@unique([userId, provider])
+  @@map("connected_accounts")
+}
+
+model SyncJob {
+  id                 String           @id @default(uuid()) @db.Uuid
+  userId             String           @map("user_id") @db.Uuid
+  connectedAccountId String           @map("connected_account_id") @db.Uuid
+  mediaId            String?          @map("media_id") @db.Uuid
+  status             JobStatus        @default(PENDING)
+  direction          SyncDirection
+  payloadDiff        Json             @default("{}") @map("payload_diff")
+  errorMessage       String?          @map("error_message")
+  retryCount         Int              @default(0) @map("retry_count")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  executedAt         DateTime?        @map("executed_at") @db.Timestamptz
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectedAccount   ConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)
+
+  @@map("sync_jobs")
+}
+
+model ImportJob {
+  id               String        @id @default(uuid()) @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  importSource     String        @map("import_source") @db.VarChar(50)
+  status           JobStatus     @default(PENDING)
+  totalRecords     Int           @default(0) @map("total_records")
+  processedRecords Int           @default(0) @map("processed_records")
+  failedRecords    Int           @default(0) @map("failed_records")
+  reportSummary    Json          @default("{}") @map("report_summary")
+  rollbackToken    String?       @map("rollback_token") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  completedAt      DateTime?     @map("completed_at") @db.Timestamptz
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  errors           ImportError[]
+
+  @@map("import_jobs")
+}
+
+model ImportError {
+  id          String    @id @default(uuid()) @db.Uuid
+  importJobId String    @map("import_job_id") @db.Uuid
+  rowIndex    Int?      @map("row_index")
+  rawPayload  Json?     @map("raw_payload")
+  errorReason String    @map("error_reason")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  importJob   ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+
+  @@map("import_errors")
+}
+
+model WidgetConfig {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  widgetIdentifier     String   @map("widget_identifier") @db.VarChar(100)
+  widgetType           String   @map("widget_type") @db.VarChar(50)
+  configurationPayload Json     @default("{}") @map("configuration_payload")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, widgetIdentifier])
+  @@map("widget_configs")
+}
+
