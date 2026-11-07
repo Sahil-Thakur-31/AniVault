@@ -38,12 +38,25 @@ app.use('/api/v1/widgets', widgetsRouter);
 app.use('/api/v1', importExportRouter);
 app.use('/api/v1/stats', statsRouter);
 
-// Start server only when executed directly
+// Start server with resilient fallback to next available port if port is busy
+function startServer(port: number, maxAttempts = 10) {
+  const server = app.listen(port, () => {
+    console.log(`[AniVault API] Service listening on http://localhost:${port}`);
+  });
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE' && maxAttempts > 0) {
+      console.warn(`[AniVault API] Port ${port} is occupied, automatically trying http://localhost:${port + 1}...`);
+      startServer(port + 1, maxAttempts - 1);
+    } else {
+      console.error('[AniVault API] Server error:', err);
+    }
+  });
+}
+
 const isDirectRun = process.argv[1] && (process.argv[1].endsWith('main.ts') || process.argv[1].endsWith('main.js'));
 if (isDirectRun && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`[AniVault API] Service listening on http://localhost:${PORT}`);
-  });
+  startServer(Number(PORT) || 3000);
 }
 
 export { app };
