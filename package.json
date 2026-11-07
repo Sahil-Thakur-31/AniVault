@@ -11,7 +11,8 @@
     "dev": "concurrently -n \"API,WEB\" -c \"blue,green\" \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm --workspace=@anivault/api run dev",
     "dev:web": "npm --workspace=@anivault/web run dev",
-    "build": "npm run --workspaces --if-present build",
+    "build:packages": "npm --workspace=@anivault/shared-types run build && npm --workspace=@anivault/validation run build && npm --workspace=@anivault/domain run build && npm --workspace=@anivault/sync-engine run build && npm --workspace=@anivault/api-client run build",
+    "build": "npm run build:packages && npm --workspace=@anivault/api run build && npm --workspace=@anivault/web run build",
     "test": "npx tsx --test tests/acceptance.test.ts tests/api.test.ts",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
