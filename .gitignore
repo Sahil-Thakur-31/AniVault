@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+build/
+.next/
+out/
+.expo/
+.output/
+
+# Environment variables
+.env
+.env.local
+.env.production
+*.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing & coverage
+coverage/
+.nyc_output/
+
+# Tauri
+apps/desktop/src-tauri/target/
+
+# Database data mounts
+pgdata/
+redisdata/
